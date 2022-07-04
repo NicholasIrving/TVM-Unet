@@ -7,16 +7,21 @@ from modelList import get_model
 import argparse
 import multiprocessing
 from evaluate import evaluate
+from tuning import tuning
+# from mgpu import mgpu
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Auto-tune a pytorch model')
     parser.add_argument('model', default='resnet18', help='Choose a model to tune')
+    parser.add_argument('--tuning', action='store_true', help='Whether Tuning')
     parser.add_argument('--eval', action='store_true', help='Evaluate and compared')
-    parser.add_argument('--tuner', choices=['xgb', 'ga', 'random', 'grid'], default='xgb', help='Choose a tuner to tune')
+    parser.add_argument('--mgpu', action='store_true', help='Whether use multiple gpu')
+    parser.add_argument('--tuner', choices=['xgb', 'ga', 'random', 'grid', 'rl'], default='xgb', help='Choose a tuner to tune')
     parser.add_argument('--device',  choices=['cpu', 'cuda'], default='cuda', help='Choose a device to tune')
     parser.add_argument('--input_shape', default=(1, 3, 224, 224), help='Input shape for the model')
     parser.add_argument('--dtype', default='float32', help='Data type of model')
     parser.add_argument('--optimize', default='nn.conv2d', help='Relay ops to be tuned. If not specified, all tunable ops will be extracted')
+    parser.add_argument('--n_parallel', default=multiprocessing.cpu_count(), help='Maximum thread while tuning')
     parser.add_argument('--n_trial', default=2000, help='Maximum number of configs to try (measure on real hardware)')
     parser.add_argument('--early_stopping', default=600, help='Early stop the tuning when not finding better configs in this number of trials')
 
@@ -30,17 +35,21 @@ def parse_args():
 
 
 args = parse_args()
+
 print('Loading model.........')
 model = get_model(args.model)
 
 
 if args.device == 'cuda':
     target = tvm.target.cuda()
-    n_parallel = target.max_num_threads
+    n_parallel = args.n_parallel
     device = tvm.cuda()
+    if args.mgpu:
+        pass
+
 else:
     target = tvm.target.Target('llvm')
-    n_parallel = multiprocessing.cpu_count()
+    n_parallel = int(args.n_parallel)
     device = tvm.cpu()
 
 input_shape = args.input_shape
@@ -51,7 +60,6 @@ scripted_model = torch.jit.trace(model, input_data).eval()
 
 print('Getting relay.........')
 mod, params = relay.frontend.from_pytorch(scripted_model, shape_list, default_dtype=args.dtype)
-
 print('Extracting tasks.........')
 tasks = autotvm.task.extract_from_program(mod['main'], params, target, ops=(relay.op.get(args.optimize),))
 
@@ -60,39 +68,17 @@ tmp_log = gen_tmp_log(log_name)
 tune_option = {
     'tmp_log': tmp_log,
     'tuner': args.tuner,
-    'n_trial': args.n_trial,
-    'early_stopping': args.early_stopping,
+    'n_trial': int(args.n_trial),
+    'early_stopping': int(args.early_stopping),
     'measure_option': autotvm.measure_option(
         builder=autotvm.LocalBuilder(n_parallel=n_parallel),
         runner=autotvm.LocalRunner(number=20, repeat=3, timeout=4, min_repeat_ms=150)
     )
 }
 
-print('Tuning.........')
-for i, task in enumerate(tasks):
+if args.tuning:
+    tuning(tasks, args.tuner, tune_option, tmp_log, log_name, args.device)
 
-    if args.tuner == "xgb":
-        tuner = tvm.autotvm.tuner.XGBTuner(task, loss_type="rank")
-    elif args.tuner == "ga":
-        tuner = autotvm.tuner.GATuner(task, pop_size=100)
-    elif args.tuner == "random":
-        tuner = autotvm.tuner.RandomTuner(task)
-    elif args.tuner == "grid":
-        tuner = autotvm.tuner.GridSearchTuner(task)
-
-    prefix = '[Task %2d / %2d]' % (i + 1, len(tasks))
-    n_trial = min(tune_option['n_trial'], len(task.config_space))
-    tuner.tune(
-        n_trial=n_trial,
-        early_stopping=tune_option['early_stopping'],
-        measure_option=tune_option['measure_option'],
-        callbacks=[
-            autotvm.callback.progress_bar(n_trial, prefix=prefix),
-            autotvm.callback.log_to_file(tune_option['tmp_log'])
-        ]
-    )
-
-autotvm.record.pick_best(tmp_log, log_name)
 
 if args.eval:
     evaluate(mod, params, target, device, log_name, input_shape, args.dtype)

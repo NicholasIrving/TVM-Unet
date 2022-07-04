@@ -3,7 +3,7 @@ import os
 from models.unet import UNet
 
 model_key = ['resnet18', 'resnet34', 'resnet50',
-             'resnet101', 'resnet152', 'vgg16',
+             'resnet101', 'resnet152', 'vgg16', 'alexnet',
              'fasterrcnn', 'unet']
 
 def get_model(key):
@@ -16,6 +16,7 @@ def get_model(key):
             'resnet152': 'torchvision.models.resnet152(pretrained=True)',
 
             'vgg16': 'torchvision.models.vgg16(pretrained=True)',
+            'alexnet': 'torchvision.models.alexnet(pretrained=True)',
 
             'fasterrcnn': 'torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)',
 

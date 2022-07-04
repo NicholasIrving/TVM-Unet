@@ -62,10 +62,11 @@ tmp_log = gen_tmp_log(log_name)
 tune_option = {
     'tmp_log': tmp_log,
     'tuner': args.tuner,
-    'n_trial': args.n_trial,
-    'early_stopping': args.early_stopping,
+    'n_trial': int(args.n_trial),
+    'early_stopping': int(args.early_stopping),
     'measure_option': autotvm.measure_option(
-        builder=autotvm.LocalBuilder(n_parallel=n_parallel),
+        #builder=autotvm.LocalBuilder(n_parallel=n_parallel),
+        builder=autotvm.LocalBuilder(n_parallel=32),
         runner=autotvm.RPCRunner(key='titanv', host='127.0.0.1', port=9190, number=20, repeat=3, timeout=4, min_repeat_ms=150)
     )
 }
@@ -76,7 +77,7 @@ for i, task in enumerate(tasks):
     if args.tuner == "xgb":
         tuner = tvm.autotvm.tuner.XGBTuner(task, loss_type="rank")
     elif args.tuner == "ga":
-        tuner = autotvm.tuner.GATuner(task, pop_size=100)
+        tuner = autotvm.tuner.GATuner(task, pop_size=1024)
     elif args.tuner == "random":
         tuner = autotvm.tuner.RandomTuner(task)
     elif args.tuner == "grid":
