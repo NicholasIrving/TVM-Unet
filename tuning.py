@@ -2,6 +2,7 @@ import tvm
 from tvm import autotvm
 
 import tuners.RLTuner as rl
+from tuners.adaboost import AdaboostTuner
 
 
 def tuning(tasks, tune, tune_option, tmp_log, log_name, device):
@@ -15,8 +16,11 @@ def tuning(tasks, tune, tune_option, tmp_log, log_name, device):
             tuner = autotvm.tuner.RandomTuner(task)
         elif tune == "grid":
             tuner = autotvm.tuner.GridSearchTuner(task)
-        if tune == 'rl':
+        elif tune == 'rl':
             tuner = rl.nas(task, tune_option, device)
+        elif tune == 'adaboost':
+            tuner = AdaboostTuner(task, plan_size=8)
+
 
         prefix = '[Task %2d / %2d]' % (i + 1, len(tasks))
         n_trial = min(tune_option['n_trial'], len(task.config_space))

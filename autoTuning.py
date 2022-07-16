@@ -16,7 +16,7 @@ def parse_args():
     parser.add_argument('--tuning', action='store_true', help='Whether Tuning')
     parser.add_argument('--eval', action='store_true', help='Evaluate and compared')
     parser.add_argument('--mgpu', action='store_true', help='Whether use multiple gpu')
-    parser.add_argument('--tuner', choices=['xgb', 'ga', 'random', 'grid', 'rl'], default='xgb', help='Choose a tuner to tune')
+    parser.add_argument('--tuner', choices=['xgb', 'ga', 'random', 'grid', 'rl', 'adaboost'], default='xgb', help='Choose a tuner to tune')
     parser.add_argument('--device',  choices=['cpu', 'cuda'], default='cuda', help='Choose a device to tune')
     parser.add_argument('--input_shape', default=(1, 3, 224, 224), help='Input shape for the model')
     parser.add_argument('--dtype', default='float32', help='Data type of model')
@@ -71,7 +71,7 @@ tune_option = {
     'n_trial': int(args.n_trial),
     'early_stopping': int(args.early_stopping),
     'measure_option': autotvm.measure_option(
-        builder=autotvm.LocalBuilder(n_parallel=n_parallel),
+        builder=autotvm.LocalBuilder(n_parallel=n_parallel, do_fork=True),
         runner=autotvm.LocalRunner(number=20, repeat=3, timeout=4, min_repeat_ms=150)
     )
 }
