@@ -64,7 +64,7 @@ mod, params = relay.frontend.from_pytorch(scripted_model, shape_list, default_dt
 print('Extracting tasks.........')
 tasks = autotvm.task.extract_from_program(mod['main'], params, target, ops=(relay.op.get(args.optimize),))
 
-log_name = gen_log(args.model)
+log_name = gen_log(args.model, args.tuner)
 tmp_log = gen_tmp_log(log_name)
 tune_option = {
     'tmp_log': tmp_log,

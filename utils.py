@@ -1,6 +1,6 @@
 import time
 import os
-def gen_log(model_name):
+def gen_log(model_name, tuner):
     folder = './tuningLog/'
     if os.path.exists(folder):
         pass
@@ -8,7 +8,7 @@ def gen_log(model_name):
         os.makedirs(folder)
 
     now = time.strftime('%Y%m%d_%H%M%S', time.localtime(time.time()))
-    log_name = folder + model_name + '-' + now + '.log'
+    log_name = folder + model_name + '-' + tuner + '-' + now + '.log'
 
     return log_name
 
