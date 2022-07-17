@@ -24,6 +24,7 @@ def parse_args():
     parser.add_argument('--n_parallel', default=multiprocessing.cpu_count(), help='Maximum thread while tuning')
     parser.add_argument('--n_trial', default=2000, help='Maximum number of configs to try (measure on real hardware)')
     parser.add_argument('--early_stopping', default=600, help='Early stop the tuning when not finding better configs in this number of trials')
+    parser.add_argument('--log_name', help='For evaluating without tuning. Log is in folder named tuningLog')
 
     args = parser.parse_args()
     cuda_path = os.path.dirname(os.path.dirname(os.popen('which nvcc').read()))
@@ -73,6 +74,7 @@ tune_option = {
     'measure_option': autotvm.measure_option(
         builder=autotvm.LocalBuilder(n_parallel=n_parallel, do_fork=True),
         runner=autotvm.LocalRunner(number=20, repeat=3, timeout=4, min_repeat_ms=150)
+        # runner=autotvm.RPCRunner('titanv', '127.0.0.1', 9190, number=20, repeat=3, timeout=4, min_repeat_ms=150)
     )
 }
 
@@ -81,6 +83,9 @@ if args.tuning:
 
 
 if args.eval:
-    evaluate(mod, params, target, device, log_name, input_shape, args.dtype)
+    if args.tuning:
+        evaluate(mod, params, target, device, log_name, input_shape, args.dtype)
+    else:
+        evaluate(mod, params, target, device, args.log_name, input_shape, args.dtype)
 
 
